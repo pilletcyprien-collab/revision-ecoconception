@@ -1,0 +1,713 @@
+<title>Carnet de révisions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: accueil en grille de matières -> page matière en liste de chapitres -> session plein écran par mode */
+:root{
+  --bg:#EFF1EC; --surface:#FFFFFF; --surface-2:#E3E8DD;
+  --fg:#1C2620; --fg-muted:#5B6B5F;
+  --accent:#2F6B49; --accent-contrast:#FFFFFF; --accent-2:#B6752B;
+  --good:#2F7A4F; --bad:#AD3A2E; --line:#D6DACE;
+  --shadow: 0 1px 2px rgba(28,38,32,.06), 0 4px 14px rgba(28,38,32,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141A16; --surface:#1C241E; --surface-2:#222B23;
+    --fg:#E9EDE6; --fg-muted:#9FAC9B;
+    --accent:#5FAE7F; --accent-contrast:#0E1410; --accent-2:#D99A4E;
+    --good:#5FAE7F; --bad:#E07A63; --line:#333D34;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 18px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141A16; --surface:#1C241E; --surface-2:#222B23;
+  --fg:#E9EDE6; --fg-muted:#9FAC9B;
+  --accent:#5FAE7F; --accent-contrast:#0E1410; --accent-2:#D99A4E;
+  --good:#5FAE7F; --bad:#E07A63; --line:#333D34;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 18px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.45}
+h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:600;text-wrap:balance;margin:0}
+.mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+#app{max-width:860px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-left,0px)) 60px max(16px,env(safe-area-inset-right,0px))}
+.topbar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:28px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{flex:none}
+.brand h1{font-size:22px}
+.brand span{color:var(--fg-muted);font-size:13px}
+a.crumb{color:var(--fg-muted);text-decoration:none;font-size:14px;cursor:pointer}
+a.crumb:hover{color:var(--accent)}
+.subjects{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.subject-card{cursor:pointer;display:flex;flex-direction:column;gap:10px;min-height:120px;transition:transform .15s ease,border-color .15s ease}
+.subject-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.subject-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.subject-card h3{font-size:18px}
+.subject-card .meta{color:var(--fg-muted);font-size:13px}
+.subject-card .ring{color:var(--accent)}
+.subject-add{display:flex;align-items:center;justify-content:center;color:var(--fg-muted);border:1px dashed var(--line);border-radius:14px;min-height:120px;font-size:13px;text-align:center;padding:18px}
+.chapters{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.chapter-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+.chapter-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.chapter-head h3{font-size:16px}
+.chapter-head .count{color:var(--fg-muted);font-size:13px}
+.bar{height:6px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-bottom:12px}
+.bar > i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.mode-row{display:flex;gap:8px;flex-wrap:wrap}
+button{font-family:inherit;font-size:14px;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);padding:9px 14px;transition:background .12s ease,border-color .12s ease}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-contrast);border-color:var(--accent)}
+button.primary:hover{opacity:.92}
+button.ghost{background:transparent}
+button.danger-ghost{background:transparent;color:var(--bad);border-color:var(--bad)}
+.session{display:flex;flex-direction:column;gap:18px;min-height:60vh}
+.session-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.progress-pill{color:var(--fg-muted);font-size:13px}
+.quit{color:var(--fg-muted);font-size:13px}
+.quit:hover{color:var(--bad)}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 0}
+.flash{width:100%;max-width:520px;aspect-ratio:3/2;perspective:1200px;cursor:pointer}
+.flash-inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d}
+.flash.flipped .flash-inner{transform:rotateY(180deg)}
+.flash-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:18px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;font-size:19px}
+.flash-face.back{transform:rotateY(180deg);background:var(--surface-2)}
+.flash-face .tag{position:absolute;top:14px;left:16px;color:var(--fg-muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.flash-actions{display:flex;justify-content:center;gap:10px}
+.qcm{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px}
+.qcm .q{font-size:19px;font-family:"Fraunces",serif}
+.qcm .opts{display:flex;flex-direction:column;gap:9px}
+.opt{text-align:left;padding:13px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.opt.correct{border-color:var(--good);background:color-mix(in srgb, var(--good) 16%, var(--surface))}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb, var(--bad) 14%, var(--surface))}
+.opt:disabled{cursor:default}
+.written{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px}
+.written .q{font-size:19px;font-family:"Fraunces",serif}
+.written textarea{width:100%;min-height:90px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:12px;font-family:inherit;font-size:15px;resize:vertical}
+.written textarea:focus-visible{outline:2px solid var(--accent)}
+.compare{display:flex;flex-direction:column;gap:10px}
+.compare .block{border-radius:12px;padding:12px 14px;border:1px solid var(--line)}
+.compare .you{background:var(--surface-2)}
+.compare .ref{background:color-mix(in srgb, var(--accent) 12%, var(--surface));border-color:var(--accent)}
+.compare .label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-muted);margin-bottom:4px}
+.grade-row{display:flex;gap:10px;justify-content:center}
+.session-nav{display:flex;justify-content:center;gap:10px}
+.recap{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.recap .score{font-size:42px;font-family:"Fraunces",serif;color:var(--accent)}
+.footer-note{margin-top:34px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--fg-muted);font-size:12px;flex-wrap:wrap}
+.exam-card{margin-top:18px;border-color:var(--accent);display:flex;flex-direction:column;gap:10px}
+.exam-card h3{font-size:17px}
+.exam-card p{margin:0;color:var(--fg-muted);font-size:14px}
+.exam-breakdown{width:100%;display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.exam-row{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:13px}
+@media (max-width:480px){
+  .flash-face{font-size:16px;padding:20px}
+  .brand h1{font-size:19px}
+}
+</style>
+
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SUBJECTS = [
+    {
+      id: "eco",
+      name: "Écoconception",
+      note: "11 chapitres",
+      chapters: [
+        {
+          id: "fond",
+          title: "Fondamentaux de l'écoconception",
+          cards: [
+            {q:"Quelle norme ISO cadre l'écoconception comme vocabulaire et principes d'intégration des aspects environnementaux en conception ?", a:"L'ISO 14062 : intégrer les aspects environnementaux dès la conception, pour réduire les impacts sur l'ensemble du cycle de vie du produit.", d:["L'ISO 9001, norme de management de la qualité.","L'ISO 50001, norme de management de l'énergie.","L'ISO 26000, norme de responsabilité sociétale."]},
+            {q:"Quelle est la différence entre écoconception et éco-innovation ?", a:"L'écoconception vise à réduire les impacts d'un produit à fonction équivalente ; l'éco-innovation peut remettre en cause la fonction ou le modèle économique (ex : vendre un usage plutôt qu'un produit).", d:["Ce sont deux termes strictement synonymes.","L'éco-innovation ne concerne que le marketing, sans impact réel.","L'écoconception s'applique uniquement aux produits neufs, jamais aux produits existants."]},
+            {q:"Pourquoi l'écoconception est-elle une approche \"multicritère\" et \"multi-étapes\" ?", a:"Parce qu'elle prend en compte plusieurs indicateurs d'impact à la fois et toutes les étapes du cycle de vie, pour éviter un simple déplacement de la pollution.", d:["Parce qu'elle implique plusieurs services de l'entreprise.","Parce qu'elle nécessite plusieurs validations réglementaires.","Parce qu'elle s'applique à plusieurs gammes en même temps."]},
+            {q:"Qu'est-ce qu'un \"transfert de pollution\" que l'écoconception cherche à éviter ?", a:"Réduire un impact sur une étape ou un critère environnemental en en aggravant un autre ailleurs (ex : réduire le poids d'un produit mais augmenter sa toxicité).", d:["Le transport des déchets d'un pays à un autre pour traitement.","Le changement de fournisseur de matière première en cours de production.","La certification d'un produit par un nouvel écolabel."]}
+          ]
+        },
+        {
+          id: "acv",
+          title: "Analyse du Cycle de Vie (ACV)",
+          cards: [
+            {q:"Quelles normes encadrent la méthodologie de l'Analyse du Cycle de Vie ?", a:"ISO 14040 (principes et cadre) et ISO 14044 (exigences et lignes directrices).", d:["ISO 14001 et ISO 14006.","ISO 9001 et ISO 14021.","ISO 50001 et ISO 14025."]},
+            {q:"À quoi sert l'unité fonctionnelle dans une ACV ?", a:"Elle quantifie la fonction rendue par le produit étudié, pour comparer équitablement des produits différents qui rendent le même service.", d:["Elle fixe le prix de vente de référence du produit.","Elle définit la durée de garantie légale du produit.","Elle mesure uniquement le poids du produit fini."]},
+            {q:"Qu'est-ce qu'une évaluation environnementale \"simplifiée\" par rapport à une ACV complète ?", a:"Un outil plus rapide et moins coûteux (check-list, ESQCV, logiciel simplifié) utilisé en amont de la conception pour orienter les choix, sans la rigueur d'une ACV normée.", d:["Une ACV réalisée uniquement sur la phase de fabrication.","Une ACV qui ne prend en compte qu'un seul indicateur d'impact.","Une certification officielle délivrée par un organisme accrédité."]},
+            {q:"Citez au moins deux catégories d'indicateurs d'impact utilisées en ACV.", a:"Le changement climatique (GWP, en kg eq. CO2), l'épuisement des ressources abiotiques, l'acidification, l'eutrophisation ou l'écotoxicité.", d:["Le chiffre d'affaires et la part de marché du produit.","La note de satisfaction client et le taux de retour SAV.","Le temps de montage et le coût de main-d'œuvre."]}
+          ]
+        },
+        {
+          id: "ecolabels",
+          title: "Écolabels et exemples",
+          cards: [
+            {q:"Qu'est-ce qu'un écolabel officiel de type I (Ecolabel européen, NF Environnement) par rapport à une simple allégation du fabricant ?", a:"Il est attribué après vérification par un organisme tiers indépendant, sur des critères multicritères couvrant tout le cycle de vie, contrairement à une autodéclaration non contrôlée.", d:["Il garantit que le produit est fabriqué en France.","Il garantit que le produit est totalement biodégradable.","Il remplace l'obligation de réaliser une ACV."]},
+            {q:"Pourquoi la chaise Aeron (Herman Miller) est-elle souvent citée en exemple en écoconception ?", a:"Parce qu'elle a été conçue dès l'origine pour être démontable et recyclable en fin de vie, tout en conservant ses performances d'usage.", d:["Parce qu'elle est fabriquée à 100% en matériaux biosourcés.","Parce qu'elle a été le premier produit certifié Ecolabel européen.","Parce qu'elle est conçue pour durer indéfiniment sans aucune maintenance."]}
+          ]
+        },
+        {
+          id: "rep",
+          title: "Filière REP et fin de vie (Valdelia)",
+          cards: [
+            {q:"Que signifie REP et quel principe fondamental porte-t-elle ?", a:"Responsabilité Élargie du Producteur : les producteurs doivent financer ou organiser la gestion des déchets issus de leurs produits en fin de vie (principe pollueur-payeur).", d:["Réglementation Européenne des Plastiques, un règlement limitant l'usage du plastique.","Recyclage et Protection, un label de certification volontaire.","Redevance pour l'Élimination des Polluants, une taxe sur les émissions industrielles."]},
+            {q:"Quelle loi française de 2020 a renforcé les filières REP (dont celle du mobilier), avec le tri 9 flux et le Triman ?", a:"La loi AGEC (Anti-Gaspillage pour une Économie Circulaire), du 10 février 2020.", d:["La loi NOTRe de 2015.","La loi de Transition Énergétique pour la Croissance Verte (LTECV) de 2015.","La directive cadre européenne relative aux déchets de 2008."]},
+            {q:"Qu'est-ce que Valdelia ?", a:"Un éco-organisme à but non lucratif, agréé pour organiser la collecte, le réemploi, la réparation et le recyclage des déchets d'éléments d'ameublement (DEA) et des produits/matériaux de construction du bâtiment (PMCB).", d:["Une entreprise privée de recyclage cotée en bourse.","Un label volontaire de certification bois (comme FSC/PEFC).","Une administration publique rattachée au ministère de l'Écologie."]},
+            {q:"Comment est financé Valdelia et pourquoi n'en tire-t-il aucun profit ?", a:"Par l'éco-contribution versée par les metteurs en marché, répercutée sur le prix de vente, et par les recettes matières ; en tant qu'organisme à but non lucratif, ses recettes doivent seulement équilibrer ses charges.", d:["Par une subvention annuelle de l'État, indépendante du volume de déchets traités.","Par la revente des données de ses adhérents à des tiers.","Par une taxe prélevée directement sur les salaires des menuisiers."]},
+            {q:"Quelles sont les 4 options de valorisation (\"secondes vies\") mises en avant par Valdelia pour le mobilier usagé ?", a:"L'occasion (revente), le réemploi/réparation, l'upcycling (mobilier design à partir de matériaux de réemploi) et le recyclage matières.", d:["L'export, le stockage, l'incinération et l'enfouissement.","La location, le don, la destruction et la compensation carbone.","La réparation, la garantie étendue, le SAV et le remboursement."]},
+            {q:"D'après les chiffres clés 2024 de Valdelia, quel est approximativement le taux de recyclage et réutilisation de la filière DEA ?", a:"Environ 80 % (80,3 %), pour un taux de valorisation globale proche de 96,5 %.", d:["Environ 20 %.","Environ 50 %.","100 %, la filière DEA ne génère aucun déchet ultime."]},
+            {q:"Quels matériaux issus du mobilier professionnel en fin de vie sont effectivement recyclés en France, selon Valdelia ?", a:"Le bois et les panneaux à base de bois (hors MDF), ainsi que les métaux ferreux et non ferreux ; les autres matériaux (textiles, mousses, plastiques) sont surtout valorisés énergétiquement.", d:["Uniquement les métaux ; le bois est systématiquement incinéré.","Le verre et les matières minérales en priorité.","Tous les matériaux sans distinction, y compris les MDF et le PVC."]},
+            {q:"Pourquoi les panneaux de fibres (MDF) et le PVC sont-ils considérés comme des \"perturbateurs du recyclage\" du mobilier ?", a:"Parce qu'ils compliquent ou empêchent le recyclage matière des éléments d'ameublement (fibres non séparables pour le MDF, composant plastique difficile à valoriser pour le PVC), contrairement au bois massif ou au métal.", d:["Parce qu'ils sont interdits à la vente en France depuis 2020.","Parce qu'ils sont classés comme déchets dangereux au même titre que l'amiante.","Parce qu'ils ne peuvent pas être valorisés énergétiquement."]},
+            {q:"Quelle bonne pratique d'écoconception Valdelia recommande-t-elle pour faciliter le recyclage du mobilier en fin de vie ?", a:"Favoriser les éléments mono-matériaux (bois ou métal), limiter le nombre de matériaux et de visseries, et concevoir des mobiliers empilables, pliables ou facilement démontables.", d:["Maximiser le nombre de finitions et de revêtements différents.","Coller systématiquement les éléments pour garantir la solidité.","Privilégier les matières inertes minérales comme le verre ou le marbre."]}
+          ]
+        },
+        {
+          id: "brezet",
+          title: "La roue de Brezet",
+          cards: [
+            {q:"Qui a mis au point la roue de Brezet et en quelle année a-t-elle été diffusée ?", a:"Mise en place à partir de 1994 par Carolien Van Hemmel, puis diffusée en 1997 par Han Brezet et Carolien Van Hemmel dans le guide \"Ecodesign\" publié par l'UNEP.", d:["Développée en 2011 par les Techniques de l'Ingénieur.","Créée par l'ISO en 2006 avec la norme 14006.","Inventée par Carolien Van Hemmel seule en 1980."]},
+            {q:"Combien d'axes de réflexion (stratégies d'écoconception) compte la roue de Brezet ?", a:"8 axes, dont le développement de nouveaux concepts (axe \"@\"), la sélection de matériaux à faible impact et l'optimisation du système de fin de vie.", d:["5 axes.","10 axes.","3 axes."]},
+            {q:"Quels sont les trois niveaux du produit couverts par les 8 axes de la roue de Brezet ?", a:"Le niveau composant (axes 1 et 2 : matériaux), le niveau structure du produit (axes 3, 4 et 5 : production, distribution, utilisation) et le niveau système (axes 6, 7 et @ : durée de vie, fin de vie, nouveaux concepts).", d:["Le niveau matière, le niveau énergie et le niveau transport.","Le niveau local, national et international.","Le niveau conception, production et vente."]},
+            {q:"Sous quelle forme visuelle la roue de Brezet est-elle représentée pour comparer un produit existant à un projet d'éco-innovation ?", a:"Un diagramme radar (\"toile d'araignée\"), avec un positionnement qualitatif (+ ou -) sur chacun des 8 axes.", d:["Un histogramme empilé.","Une courbe de tendance linéaire.","Un nuage de points d'ACV."]},
+            {q:"Quelles sont les trois sessions de la démarche d'éco-innovation construite autour de la roue de Brezet ?", a:"Session d'introduction et de sensibilisation, session de créativité, session de synthèse.", d:["Session de budget, session de prototypage, session de vente.","Brainstorming, vote, validation hiérarchique.","Audit, certification, communication."]},
+            {q:"Dans la session de créativité, que désigne la \"phase divergente\" ?", a:"Générer un maximum d'idées sur chaque axe de la roue de Brezet, en ne considérant que les aspects environnementaux, sans juger les aspects techniques et économiques.", d:["Trier et sélectionner les idées à mettre en œuvre.","Présenter le bilan environnemental du produit au groupe.","Rédiger le cahier des charges final du projet."]},
+            {q:"Que signifie l'ESQCV, citée comme outil d'évaluation environnementale préalable à la démarche de la roue de Brezet ?", a:"L'évaluation simplifiée et qualitative du cycle de vie, une alternative plus rapide et plus légère qu'une ACV complète.", d:["Une norme de sécurité européenne pour les jouets.","Un indicateur de qualité de l'air intérieur.","Un label de traçabilité du bois certifié."]},
+            {q:"Quel document est produit à l'issue de la session de synthèse pour chaque idée d'éco-innovation retenue ?", a:"Une fiche projet incluant description, objectifs, gains environnementaux potentiels, faisabilité technique et faisabilité économique.", d:["Un cahier des charges fonctionnel complet.","Un brevet déposé à l'INPI.","Un rapport d'ACV normé ISO 14044."]}
+          ]
+        },
+        {
+          id: "af",
+          title: "Analyse fonctionnelle",
+          cards: [
+            {q:"Que décrit l'analyse fonctionnelle du besoin, selon les normes NF X50-150 et ISO 16271 ?", a:"Le besoin auquel devra répondre le produit, sous forme de fonctions de service et de contraintes.", d:["Uniquement les contraintes réglementaires du produit.","Le plan de production détaillé du produit.","Le prix de revient prévisionnel du produit."]},
+            {q:"Qu'est-ce que la \"bête à cornes\" et à quoi sert-elle ?", a:"Un outil qui formule le besoin fondamental d'un système en répondant à : à qui/quoi rend-il service, sur qui/quoi agit-il, dans quel but.", d:["Un diagramme de Gantt pour planifier un projet.","Une méthode de calcul de la résistance mécanique d'une pièce.","Un outil de calcul des coûts de fabrication."]},
+            {q:"Quelle est la différence entre une fonction principale et une fonction contrainte ?", a:"La fonction principale justifie la création du produit (pourquoi il existe) ; la fonction contrainte limite la liberté du concepteur sans justifier à elle seule l'existence du produit (sécurité, normes, adaptation au contexte...).", d:["La fonction principale est toujours technique, la fonction contrainte toujours esthétique.","Ce sont deux termes strictement synonymes.","La fonction contrainte ne concerne que les produits électroniques."]},
+            {q:"Qu'est-ce qu'une \"fonction d'estime\" ?", a:"Une fonction liée au goût de l'utilisateur, qui déclenche généralement l'acte d'achat (esthétique, image de marque...).", d:["Une fonction qui évalue la solidité mécanique du produit.","Une fonction réservée aux produits de luxe.","Une fonction qui mesure l'impact environnemental du produit."]},
+            {q:"Quelle est la différence entre une fonction de service et une fonction technique ?", a:"La fonction de service répond à \"à quoi cela sert\" du point de vue de l'utilisateur ; la fonction technique répond à \"comment le faire\" du point de vue de la solution retenue.", d:["La fonction de service concerne l'après-vente, la fonction technique la fabrication.","Ce sont deux étapes du cycle de vie du produit.","La fonction technique ne s'applique qu'aux logiciels."]},
+            {q:"Qu'est-ce que le \"diagramme pieuvre\" en analyse fonctionnelle ?", a:"Un diagramme qui recense les éléments du milieu extérieur (EME) autour du produit, reliés par une fonction principale ou des fonctions contraintes.", d:["Un outil de calcul d'ACV multicritère.","Un planning de production en forme d'étoile.","Une méthode de notation des fournisseurs."]},
+            {q:"Comment doit-on formuler une fonction, selon la méthode vue en cours ?", a:"Un verbe à l'infinitif (l'action) suivi d'un complément (pour qui / sur quoi), sans préjuger d'une solution technique ni utiliser de négation.", d:["Toujours au futur, à la première personne.","Sous forme de question fermée (oui/non).","Par un chiffre normalisé ISO uniquement."]},
+            {q:"Qu'est-ce que \"caractériser\" une fonction de service ?", a:"Définir un critère d'appréciation et lui attribuer un niveau de performance attendu, assorti d'une flexibilité (tolérance).", d:["Lui attribuer un prix de vente.","La classer par ordre alphabétique.","La traduire dans une autre langue pour l'export."]},
+            {q:"Que signifie le sigle CdCf et que contient-il ?", a:"Cahier des charges fonctionnel : document qui exprime un besoin en fonctions de service et contraintes, avec pour chacune un critère d'appréciation, un niveau et une flexibilité (norme NF EN 16271).", d:["Un document uniquement commercial sans valeur technique.","Code des Clauses Fiscales, un document administratif.","Un simple devis chiffré du projet."]}
+          ]
+        },
+        {
+          id: "demarche",
+          title: "La démarche de conception",
+          cards: [
+            {q:"Selon le Grand Dictionnaire Terminologique, qu'est-ce que la conception en ingénierie ?", a:"Une activité créatrice qui consiste à élaborer un projet en partant des besoins exprimés, des moyens existants et des possibilités technologiques, dans le but de créer un bien ou un service.", d:["Uniquement la réalisation physique du prototype final.","La vente du produit fini au client.","Le contrôle qualité en fin de chaîne de production."]},
+            {q:"Quelle est la différence entre innovation, adaptation et modification en conception ?", a:"L'innovation crée un produit totalement nouveau (rare) ; l'adaptation transfère un principe existant à un nouveau contexte ; la modification optimise un produit existant (la plus fréquente).", d:["Ce sont trois synonymes désignant la même démarche.","L'innovation concerne uniquement le marketing, la modification uniquement la technique.","L'adaptation est réservée aux produits de luxe."]},
+            {q:"Quelle est la différence entre un besoin et un désir, selon la pyramide de Maslow appliquée à la conception ?", a:"Le besoin est ce qui est vital pour l'utilisateur (attentes profondes) ; le désir est la manière dont il envisage d'y répondre, ce qui restreint davantage les solutions envisageables.", d:["Le désir est toujours plus rationnel que le besoin.","Le besoin ne concerne que les produits alimentaires.","Ce sont des synonymes interchangeables en cahier des charges."]},
+            {q:"Pourquoi faut-il distinguer le client de l'utilisateur dans une démarche de conception ?", a:"Le client est celui qui achète, l'utilisateur celui qui bénéficie du produit ; il faut satisfaire les deux pour concevoir judicieusement (ex : un parent achète un jouet pour son enfant).", d:["Parce que l'utilisateur n'a jamais d'influence sur l'achat.","Parce que seul le client doit être pris en compte en conception.","Parce que la loi française l'impose pour tout produit vendu en France."]},
+            {q:"Quelles sont les 6 grandes étapes de la démarche générale de conception présentée en cours ?", a:"Identification des besoins, conceptualisation des solutions (idéation), recherche des solutions techniques, sélection des meilleures solutions, modélisation, réalisation.", d:["Vente, production, contrôle qualité, SAV, recyclage, archivage.","Idée, brevet, prototype, production, marketing, distribution.","Cahier des charges, devis, facturation, livraison, garantie, clôture."]},
+            {q:"Qu'est-ce que la notion d'itération dans la démarche de conception ?", a:"Le fait de revenir de manière cyclique sur une étape précédente pour l'améliorer en continu, sans jamais arrêter de chercher d'autres solutions alternatives.", d:["La répétition identique du même prototype plusieurs fois.","Le fait de ne jamais revenir sur une décision prise.","Une étape obligatoire réservée à la fin du projet."]},
+            {q:"Quels sont les trois grands types d'évaluation des performances d'une solution technique ?", a:"La simulation numérique, l'expérimentation (sur une partie du produit) et le prototypage (sur le produit complet).", d:["Le vote, le consensus et le tri croisé.","L'ACV, l'ACB et l'AMDEC.","Le benchmarking, le sondage et l'entretien."]},
+            {q:"Quelle est la différence entre un croquis de principe et un croquis technique ?", a:"Le croquis de principe privilégie l'aspect esthétique pour présenter un concept ; le croquis technique privilégie la compréhension détaillée d'une solution technique (dimensions, assemblages...).", d:["Le croquis technique est toujours réalisé par ordinateur, le croquis de principe à la main.","Ce sont deux termes strictement équivalents.","Le croquis de principe n'est utilisé qu'en fin de projet."]},
+            {q:"Que protège un brevet et pour quelle durée maximale en France ?", a:"Une innovation technique (produit ou procédé) nouvelle, impliquant une activité inventive et une application industrielle ; protection maximale de 20 ans, obtenue auprès de l'INPI.", d:["Toute idée, y compris non technique, pour une durée illimitée.","Uniquement les marques commerciales, pour 10 ans.","Le design esthétique uniquement, pour 5 ans."]}
+          ]
+        },
+        {
+          id: "multimat",
+          title: "Approche multi-matériaux",
+          cards: [
+            {q:"Quelle est la différence entre un alliage et un composite ?", a:"Un alliage est un mélange de matériaux miscibles (ex : acier) ; un composite est un assemblage de matériaux non miscibles, typiquement une matrice et un renfort (ex : contreplaqué, béton).", d:["Ce sont deux termes strictement synonymes.","L'alliage concerne uniquement les polymères.","Le composite est toujours biosourcé."]},
+            {q:"Dans un matériau composite, quel est le rôle respectif de la matrice et du renfort ?", a:"Le renfort assure les propriétés mécaniques du composite ; la matrice répartit les sollicitations mécaniques sur le renfort et le protège (UV, abrasion, température).", d:["La matrice assure la résistance mécanique, le renfort protège contre les UV.","Les deux ont un rôle strictement identique et interchangeable.","Le renfort n'a qu'un rôle esthétique."]},
+            {q:"D'après la définition de l'ADEME (2025) citée en cours, qu'est-ce qu'un composite biosourcé ?", a:"Un composite renforcé par des fibres naturelles, indépendamment de la nature de la matrice qui peut être biosourcée ou non.", d:["Un composite dont la matrice ET le renfort doivent obligatoirement être biosourcés.","Un composite composé uniquement de bois massif.","Tout matériau recyclable, qu'il contienne ou non des fibres naturelles."]},
+            {q:"Selon la classification par liaison chimique, à quelle famille appartient le bois et quelles en sont les propriétés principales ?", a:"Famille des polymères (liaison covalente) : mise en forme relativement facile, température d'usage limitée, isolant thermique et électrique.", d:["Famille des métaux : conducteur, dur et rigide.","Famille des céramiques : grande résistance thermique mais fragile.","Famille des composites : toujours assemblage de deux matières différentes."]},
+            {q:"Qu'est-ce qu'un \"indice de performance\" en sélection de matériaux ?", a:"Un indicateur qui combine plusieurs propriétés (ex : résistance/masse volumique) pour comparer objectivement des matériaux vis-à-vis d'un objectif donné (ex : minimiser le poids à résistance égale).", d:["Le prix au kilo du matériau uniquement.","Une note qualitative donnée par un expert sans calcul.","La durée de vie garantie par le fabricant."]},
+            {q:"Pourquoi le bois est-il souvent avantageux face à l'acier sur un diagramme d'Ashby (module d'élasticité / masse volumique) ?", a:"Parce qu'à rigidité comparable, le bois est beaucoup plus léger que l'acier (manutention et mise en œuvre facilitées), tout en restant plus rigide et résistant que les élastomères.", d:["Parce que le bois a toujours un module d'élasticité supérieur à l'acier.","Parce que le bois est toujours moins cher que l'acier.","Parce que le diagramme d'Ashby ne prend en compte que le prix."]},
+            {q:"Que représentent les trois composantes [matériau, procédé, forme] dans le choix d'une solution technique ?", a:"La fonction d'un composant est assurée par la combinaison de ces trois éléments ; la forme et le matériau choisis limitent les procédés possibles, et inversement.", d:["Trois étapes indépendantes et sans lien entre elles.","Trois critères réservés uniquement à l'évaluation environnementale.","Les trois phases obligatoires d'une ACV."]},
+            {q:"Qu'est-ce qu'une FDES (Fiche de Déclaration Environnementale et Sanitaire) ?", a:"Un document normé (NF EN 15804) décrivant les impacts environnementaux d'un matériau ou produit de construction sur une unité fonctionnelle donnée, disponible notamment sur la base INIES.", d:["Un certificat de garantie commerciale du fabricant.","Une fiche de sécurité incendie obligatoire.","Un document réservé aux matériaux plastiques."]},
+            {q:"Pourquoi faut-il être prudent avec les valeurs moyennes des matériaux biosourcés lors d'un choix de matériau ?", a:"Parce qu'ils sont par nature très variables (hétérogénéité du bois par exemple) : une valeur moyenne seule peut conduire à une décision peu robuste, il faut tenir compte de l'incertitude.", d:["Parce que les matériaux biosourcés n'ont aucune propriété mesurable.","Parce que la base Granta ne contient aucune donnée sur les biosourcés.","Parce que la loi interdit leur utilisation en structure."]}
+          ]
+        },
+        {
+          id: "procedes",
+          title: "Procédés de fabrication et impact environnemental",
+          cards: [
+            {q:"Quelle est la différence entre un flux poussé et un flux tiré en production ?", a:"En flux poussé, la fabrication est lancée sur prévision des ventes avant la commande client (grandes séries, marge faible, objectif : optimiser le process) ; en flux tiré, elle démarre sur demande réelle du client (petites séries, marge forte, objectif : respecter le délai).", d:["Le flux poussé concerne uniquement les produits uniques, le flux tiré les grandes séries.","Ce sont deux étapes successives d'un même processus de fabrication.","Le flux tiré est réservé aux produits recyclés."]},
+            {q:"Quelle est la différence entre une machine-outil et une ligne de production ?", a:"Une machine-outil façonne seule un produit grâce à une source d'énergie ; une ligne de production est un ensemble de machines-outils cadencées et reliées entre elles pour transformer un produit selon une approche de lot de production.", d:["Ce sont deux termes strictement synonymes.","Une ligne de production ne comporte jamais de machine-outil.","Une machine-outil est toujours plus productive qu'une ligne de production."]},
+            {q:"Quelle est la différence entre une MOPN et une MOCN ?", a:"La MOPN (positionnement numérique) nécessite l'intervention d'un opérateur pour réaliser l'usinage malgré un réglage numérique ; la MOCN (commande numérique) réalise l'usinage sans intervention de l'opérateur.", d:["La MOPN est toujours plus récente que la MOCN.","Ce sont deux termes qui désignent la même chose.","La MOCN ne peut usiner que du massif, la MOPN que du panneau."]},
+            {q:"Pourquoi une CNC 5 axes est-elle généralement utilisée sur du bois massif plutôt que sur du panneau ?", a:"Parce qu'elle combine 3 translations et 2 rotations (hors rotation outil), ce qui permet d'usiner des formes complexes en volume, alors qu'une CNC 3 axes (translations seules) suffit pour le travail à plat du panneau.", d:["Parce que les CNC 5 axes sont toujours moins chères.","Parce que le panneau ne peut pas être usiné par une machine numérique.","Parce que la CNC 3 axes est réservée à la construction."]},
+            {q:"D'après l'exemple d'ACV simplifiée d'une CNC vu en cours, quelle phase du cycle de vie de la machine génère le plus de CO2 ?", a:"La phase d'utilisation (consommation électrique de la machine), largement devant la production de l'équipement, le transport et la fin de vie.", d:["La phase de transport de la machine jusqu'à l'usine.","La phase de fabrication de la machine elle-même.","La phase de fin de vie et de recyclage de la machine."]},
+            {q:"Pourquoi l'emplacement géographique du site de production influence-t-il fortement l'empreinte carbone d'une machine-outil en service ?", a:"Parce que l'impact carbone de la phase d'utilisation dépend directement du mix énergétique du pays (part de production électrique décarbonée ou non).", d:["Parce que le prix de l'électricité est le seul facteur qui compte.","Parce que la machine fonctionne différemment selon le climat.","Parce que les normes de sécurité changent la consommation électrique."]},
+            {q:"Pour comparer équitablement deux machines-outils sur le plan environnemental, quelle notion faut-il impérativement appliquer ?", a:"L'unité fonctionnelle : comparer deux machines qui produisent le même résultat (même nombre de pièces conformes) dans les mêmes conditions ; si une machine est deux fois plus lente, son impact \"utilisation\" doit être doublé pour la comparaison.", d:["Le prix d'achat de chaque machine.","La date de mise sur le marché de chaque machine.","La couleur et la marque de chaque machine."]},
+            {q:"Selon les données FCBA citées en cours, quels sont les postes les plus consommateurs d'énergie électrique dans une scierie ?", a:"Le sciage premier débit (scies de tête, slabber), le séchage, l'aspiration et l'air comprimé.", d:["L'éclairage et le chauffage des bureaux administratifs.","Le transport des grumes jusqu'à la scierie.","L'emballage des produits finis uniquement."]}
+          ]
+        },
+        {
+          id: "vocab",
+          title: "Vocabulaire des procédés bois",
+          cards: [
+            {q:"Quelle est la différence entre une grume et une bille, dans le vocabulaire de la scierie ?", a:"La grume est le tronc d'arbre abattu, ébranché et écimé, prêt à être débité ; la bille est une section de grume destinée au sciage.", d:["Ce sont deux synonymes strictement interchangeables.","La bille désigne uniquement le bois après séchage.","La grume désigne le produit fini après rabotage."]},
+            {q:"Qu'est-ce qu'un avivé et en quoi diffère-t-il d'un carrelet ?", a:"L'avivé est une poutre de bois massif brute de sciage sur ses 4 faces (non rabotée) ; le carrelet est reconstitué par collage/aboutage puis scié et raboté aux dimensions finies.", d:["Ce sont deux termes désignant le même produit.","L'avivé est toujours plus long qu'un carrelet.","Le carrelet désigne uniquement les produits destinés à l'export."]},
+            {q:"Qu'appelle-t-on la \"dosse\" en sciage ?", a:"La première et la dernière planche sciée dans un tronc, avec une face plane et l'autre bombée (côté écorce).", d:["La plus belle planche obtenue, réservée aux produits haut de gamme.","Le nom donné à la sciure récupérée en fin de sciage.","La pièce centrale du tronc, la plus résistante mécaniquement."]},
+            {q:"Que mesure le \"rendement matière\" en scierie ?", a:"Le rapport entre le volume de produits finis obtenus et le volume de grumes utilisées en entrée.", d:["Le nombre d'heures de production par jour.","Le pourcentage de bois certifié FSC/PEFC utilisé.","La vitesse d'avance des grumes sur la ligne de sciage."]},
+            {q:"En construction bois, qu'est-ce que le \"contreventement\" d'une structure ?", a:"L'ensemble des éléments qui assurent la stabilité d'une structure face aux forces horizontales (vent, séisme...).", d:["Le revêtement extérieur qui protège les murs d'un bâtiment.","La membrane qui empêche la diffusion de vapeur d'eau dans les parois.","L'élément triangulé de charpente qui supporte la toiture."]},
+            {q:"Quelle est la différence entre une maison \"poteaux-poutres\" et une maison à \"ossature bois\" (MOB) ?", a:"La maison poteaux-poutres utilise de grandes sections de bois (poteaux, poutres) avec des remplissages entre elles ; la MOB repose sur une structure de montants et traverses de plus petite section, isolée entre les éléments.", d:["Ce sont deux noms pour la même technique constructive.","La MOB n'utilise jamais de panneaux de contreventement.","La maison poteaux-poutres est toujours en bois massif empilé."]},
+            {q:"Qu'est-ce qu'un panneau \"CLT\" en construction bois ?", a:"Un panneau massif en bois lamellé-croisé (couches de lames collées perpendiculairement les unes aux autres), utilisé pour former murs et planchers.", d:["Un panneau de particules bon marché utilisé pour l'emballage.","Un panneau de fibres (MDF) utilisé en ameublement.","Un contreplaqué fin réservé aux coffrages de chantier."]},
+            {q:"Dans le processus généralisé de fabrication en construction bois, quelles sont les 4 grandes étapes ?", a:"Débit, taillage, assemblage, montage.", d:["Sciage, séchage, rabotage, conditionnement.","Conception, prototypage, production, livraison.","Abattage, transport, stockage, vente."]},
+            {q:"Quelle est la fonction d'une \"corroyeuse\" en atelier bois ?", a:"Raboter des pièces à la section désirée sur 2 à 4 faces simultanément, à l'aide de plusieurs arbres d'usinage.", d:["Assembler les panneaux de contreventement sur une table de montage.","Scanner les grumes pour détecter les défauts internes.","Sécher le bois dans une cellule climatisée."]},
+            {q:"Qu'est-ce qu'un \"slabber\" en tête de ligne de sciage ?", a:"Une machine qui traite les deux faces d'une grume en éliminant les dosses, puis broie ces dosses en copeaux.", d:["Une machine qui mesure et scanne la grume avant sciage.","Une presse qui assemble les fermettes industrielles.","Un séchoir à air chaud climatisé pour le bois débité."]},
+            {q:"Qu'est-ce que la \"contremarque\" en gestion de production ?", a:"Une méthode où les articles sont fabriqués uniquement après réception d'une commande client ferme (par opposition à la production sur stock).", d:["Une méthode de contrôle qualité des pièces finies.","Un type d'étiquetage réglementaire du mobilier.","Une remise commerciale accordée aux gros clients."]},
+            {q:"Que signifie travailler \"au défilé\" dans un atelier de production ?", a:"Les pièces passent successivement par différents postes de travail fixes, sans s'arrêter ou presque, donc sans zone de stockage intermédiaire entre les postes.", d:["Une méthode de production artisanale pièce par pièce, sans ligne.","Le fait de produire uniquement la nuit pour limiter les coûts énergétiques.","Un mode de production réservé à l'export."]},
+            {q:"Qu'est-ce que le \"nesting\" sur un centre d'usinage CNC ?", a:"Une technique d'usinage et de découpe optimisée de pièces imbriquées dans un panneau, pour maximiser le rendement matière.", d:["Une opération de collage de plusieurs panneaux entre eux.","Un type de finition de surface par vernis.","Le stockage automatisé des panneaux bruts avant découpe."]},
+            {q:"Qu'est-ce que le \"Système 32\" dans l'industrie du meuble ?", a:"Un entraxe standardisé de perçages, qui permet une grande flexibilité dans l'ajout de quincailleries et facilite l'assemblage des meubles.", d:["Une norme de sécurité incendie pour les meubles de bureau.","Un format de panneau standardisé en Europe.","Un protocole de communication entre machines CNC."]},
+            {q:"Quelle est la différence entre postformage et softformage des chants de panneaux ?", a:"Le postformage plie à chaud un stratifié pour recouvrir le chant en continuité avec la surface ; le softformage utilise un film PVC souple ou un stratifié fin, permettant des profils plus complexes et un arrondi doux.", d:["Ce sont deux noms pour le même procédé, selon le pays.","Le softformage ne s'applique qu'au bois massif.","Le postformage est toujours moins cher que le softformage."]},
+            {q:"Qu'est-ce qu'un \"caisson\" en ameublement ?", a:"Un élément de base de forme rectangulaire qui constitue la structure principale de nombreux meubles, en particulier les meubles de rangement.", d:["Un système d'aspiration des copeaux dans l'atelier.","Un type d'emballage renforcé pour le transport.","La partie supérieure d'une table de montage."]}
+          ]
+        },
+        {
+          id: "pratique",
+          title: "Infos pratiques : évaluation et équipe",
+          cards: [
+            {q:"Quelle est la pondération entre l'évaluation commune et l'évaluation CAO dans le bloc Écoconception ?", a:"L'évaluation commune (analyse fonctionnelle, conception, procédés, matériaux, droit de l'environnement, écoconception, ACV, fin de vie, aide à la décision) compte pour 70% ; l'évaluation CAO compte pour 30%.", d:["50/50 entre les deux évaluations.","L'évaluation CAO compte pour 70%.","Seule l'évaluation commune est notée."]},
+            {q:"Quel est le format de l'évaluation commune du bloc Écoconception ?", a:"Des questions de cours (QCM + questions ouvertes) et une étude de cas (QCM + questions ouvertes), plus un QCM e-learning sur 1 point (prise en main de Granta).", d:["Un oral uniquement.","Un rapport d'ACV complet à rendre en groupe.","Un QCM seul, sans question ouverte."]},
+            {q:"Quelle compétence les apprentis doivent-ils valider en décembre dans le cadre de ce bloc ?", a:"Analyser les résultats d'une ACV simplifiée et identifier les étapes les plus impactantes (revue critique sur un périmètre restreint).", d:["Réaliser une ACV complète normée ISO 14044 sur un produit industriel.","Déposer un brevet auprès de l'INPI.","Concevoir une ligne de production automatisée."]},
+            {q:"Qu'est-ce que \"Les Transitionneurs\" à l'ESB ?", a:"L'incubateur de projets responsables de l'école, qui accompagne les enseignements sur la soutenabilité (fresque du climat, atelier 2 tonnes, écoconception, chaîne de valeur responsable...) sur les 3 années de formation.", d:["Le nom du logiciel d'ACV utilisé en cours.","Un club sportif de l'école.","Le bureau d'étude partenaire pour les stages."]}
+          ]
+        }
+      ]
+    }
+  ];
+
+  // -- ids + progress --------------------------------------------------
+  SUBJECTS.forEach(function(s){
+    s.chapters.forEach(function(c){
+      c.cards.forEach(function(card, i){ card.id = s.id + "__" + c.id + "__" + i; });
+    });
+  });
+
+  var PROGRESS_KEY = "revision_progress_v1";
+  function loadProgress(){
+    try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveProgress(p){
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch(e){}
+  }
+  function markCard(cardId, known){
+    var p = loadProgress();
+    p[cardId] = known;
+    saveProgress(p);
+  }
+  function chapterMastery(chapter){
+    var p = loadProgress();
+    var total = chapter.cards.length, known = 0;
+    chapter.cards.forEach(function(c){ if (p[c.id]) known++; });
+    return total ? Math.round(known / total * 100) : 0;
+  }
+
+  // -- helpers -----------------------------------------------------------
+  function el(html){
+    var t = document.createElement("template");
+    t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  }
+  function esc(s){
+    return s.replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function shuffle(arr){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+  function findSubject(id){ return SUBJECTS.filter(function(s){return s.id===id;})[0]; }
+
+  // -- routing (home / subject-<id> only; sessions are in-page state) ---
+  var app = document.getElementById("app");
+  var session = null; // transient, not routed
+
+  function go(hash){ location.hash = hash; }
+  window.addEventListener("hashchange", render);
+
+  function currentRoute(){
+    var h = (location.hash || "").replace(/^#/, "");
+    if (h.indexOf("subject-") === 0){
+      var sid = h.slice("subject-".length);
+      if (findSubject(sid)) return {view:"subject", id:sid};
+    }
+    return {view:"home"};
+  }
+
+  function render(){
+    clearExamTimer();
+    session = null;
+    var route = currentRoute();
+    app.innerHTML = "";
+    app.appendChild(topbar(route));
+    if (route.view === "subject") app.appendChild(subjectView(findSubject(route.id)));
+    else app.appendChild(homeView());
+  }
+
+  function topbar(route){
+    var crumb = route.view === "subject"
+      ? '<a class="crumb" data-go="home">Matières</a><span style="color:var(--fg-muted)"> / </span><span>' + esc(findSubject(route.id).name) + "</span>"
+      : '<span>&nbsp;</span>';
+    var bar = el(
+      '<div class="topbar">' +
+        '<div class="brand">' + leafIcon() +
+          '<div><h1>Carnet de révisions</h1><span>façon Quizlet, pour tes cours ESB</span></div>' +
+        '</div>' +
+        '<div>' + crumb + '</div>' +
+      '</div>'
+    );
+    bar.querySelectorAll("[data-go]").forEach(function(n){
+      n.addEventListener("click", function(){ go(n.getAttribute("data-go")); });
+    });
+    return bar;
+  }
+
+  function leafIcon(){
+    return '<svg width="28" height="28" viewBox="0 0 28 28" fill="none">' +
+      '<path d="M5 22C5 10 15 5 23 5C23 14 18 23 6 23C5.4 23 5 22.6 5 22Z" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round"/>' +
+      '<path d="M23 5C18 9 12 14 6 22" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>' +
+      "</svg>";
+  }
+
+  function homeView(){
+    var wrap = el('<div></div>');
+    var grid = el('<div class="subjects"></div>');
+    SUBJECTS.forEach(function(s){
+      var totalCards = s.chapters.reduce(function(n,c){return n+c.cards.length;},0);
+      var card = el(
+        '<div class="card subject-card" tabindex="0" role="button" data-go="subject-' + s.id + '">' +
+          '<div class="ring">' + leafIcon() + "</div>" +
+          "<h3>" + esc(s.name) + "</h3>" +
+          '<div class="meta mono">' + s.chapters.length + " chapitres · " + totalCards + " cartes</div>" +
+        "</div>"
+      );
+      card.addEventListener("click", function(){ go("subject-" + s.id); });
+      card.addEventListener("keydown", function(e){ if (e.key === "Enter") go("subject-" + s.id); });
+      grid.appendChild(card);
+    });
+    grid.appendChild(el('<div class="subject-add">+ d\'autres matières arriveront ici au fil des cours</div>'));
+    wrap.appendChild(grid);
+    return wrap;
+  }
+
+  function subjectView(subject){
+    var wrap = el("<div></div>");
+    var list = el('<div class="chapters"></div>');
+    subject.chapters.forEach(function(ch){
+      var mastery = chapterMastery(ch);
+      var row = el(
+        '<div class="chapter-row">' +
+          '<div class="chapter-head">' +
+            "<h3>" + esc(ch.title) + "</h3>" +
+            '<span class="count mono">' + ch.cards.length + " cartes · " + mastery + "% maîtrisé</span>" +
+          "</div>" +
+          '<div class="bar"><i style="width:' + mastery + '%"></i></div>' +
+          '<div class="mode-row">' +
+            '<button class="primary" data-mode="flashcards">Flashcards</button>' +
+            '<button data-mode="qcm">QCM</button>' +
+            '<button data-mode="written">Question écrite</button>' +
+          "</div>" +
+        "</div>"
+      );
+      row.querySelectorAll("[data-mode]").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          startSession(subject, ch, btn.getAttribute("data-mode"));
+        });
+      });
+      list.appendChild(row);
+    });
+    wrap.appendChild(list);
+    var examCard = el(
+      '<div class="card exam-card">' +
+        "<h3>Examen blanc</h3>" +
+        "<p>" + EXAM_LENGTH + " questions QCM tirées au hasard dans toutes les matières, en " + Math.round(EXAM_DURATION/60) + " minutes chrono.</p>" +
+        '<div><button class="primary" data-start-exam>Lancer l\'examen blanc</button></div>' +
+      "</div>"
+    );
+    examCard.querySelector("[data-start-exam]").addEventListener("click", function(){ startExam(subject); });
+    wrap.appendChild(examCard);
+    wrap.appendChild(el(
+      '<div class="footer-note">' +
+        "<span>La progression est enregistrée uniquement dans ce navigateur.</span>" +
+        '<button class="ghost" id="reset-btn" style="font-size:12px;padding:5px 10px">Réinitialiser la progression</button>' +
+      "</div>"
+    ));
+    var resetBtn = wrap.querySelector("#reset-btn");
+    var confirming = false;
+    resetBtn.addEventListener("click", function(){
+      if (!confirming){
+        confirming = true;
+        resetBtn.textContent = "Confirmer la réinitialisation ?";
+        resetBtn.classList.add("danger-ghost");
+        setTimeout(function(){
+          if (confirming){ confirming = false; resetBtn.textContent = "Réinitialiser la progression"; resetBtn.classList.remove("danger-ghost"); }
+        }, 4000);
+        return;
+      }
+      var p = loadProgress();
+      subject.chapters.forEach(function(c){ c.cards.forEach(function(card){ delete p[card.id]; }); });
+      saveProgress(p);
+      render();
+    });
+    return wrap;
+  }
+
+  // -- session runner ------------------------------------------------
+  var EXAM_LENGTH = 20;
+  var EXAM_DURATION = 15 * 60;
+  var examTimerId = null;
+
+  function clearExamTimer(){
+    if (examTimerId){ clearInterval(examTimerId); examTimerId = null; }
+  }
+  function formatTime(s){
+    var m = Math.floor(s / 60), ss = s % 60;
+    return m + ":" + (ss < 10 ? "0" : "") + ss;
+  }
+  function startExamTimer(){
+    clearExamTimer();
+    examTimerId = setInterval(function(){
+      if (!session || !session.isExam){ clearExamTimer(); return; }
+      session.timeLeft--;
+      if (session.timeLeft <= 0){
+        session.timeLeft = 0;
+        clearExamTimer();
+        session.pos = session.order.length;
+        renderSession();
+        return;
+      }
+      var elTimer = document.getElementById("exam-timer");
+      if (elTimer) elTimer.textContent = formatTime(session.timeLeft);
+    }, 1000);
+  }
+
+  function startSession(subject, chapter, mode){
+    clearExamTimer();
+    session = {
+      subject: subject, chapter: chapter, mode: mode, isExam: false,
+      order: shuffle(chapter.cards.map(function(_,i){return i;})),
+      pos: 0, correct: 0, done: false
+    };
+    renderSession();
+  }
+
+  function startExam(subject){
+    var pool = [];
+    subject.chapters.forEach(function(ch){
+      ch.cards.forEach(function(c){ c.chapterTitle = ch.title; pool.push(c); });
+    });
+    pool = shuffle(pool);
+    session = {
+      subject: subject, chapter: null, mode: "qcm", isExam: true,
+      order: pool.slice(0, Math.min(EXAM_LENGTH, pool.length)),
+      pos: 0, correct: 0, done: false,
+      results: {}, timeLeft: EXAM_DURATION
+    };
+    startExamTimer();
+    renderSession();
+  }
+
+  function currentCard(){
+    var item = session.order[session.pos];
+    return session.isExam ? item : session.chapter.cards[item];
+  }
+
+  function quitSession(){ clearExamTimer(); render(); }
+
+  function renderSession(){
+    app.innerHTML = "";
+    app.appendChild(topbar({view:"subject", id: session.subject.id}));
+    if (session.pos >= session.order.length){
+      clearExamTimer();
+      app.appendChild(recapView());
+      return;
+    }
+    var card = currentCard();
+    var top = el(
+      '<div class="session-top">' +
+        '<span class="progress-pill mono">' + (session.pos+1) + " / " + session.order.length + "</span>" +
+        (session.isExam ? '<span id="exam-timer" class="progress-pill mono">' + formatTime(session.timeLeft) + "</span>" : "") +
+        '<a class="quit" data-quit>Quitter la session</a>' +
+      "</div>"
+    );
+    top.querySelector("[data-quit]").addEventListener("click", quitSession);
+
+    var stageContent;
+    if (session.mode === "flashcards") stageContent = flashcardStage(card);
+    else if (session.mode === "qcm") stageContent = qcmStage(card);
+    else stageContent = writtenStage(card);
+
+    var box = el('<div class="session"></div>');
+    box.appendChild(top);
+    var stage = el('<div class="stage"></div>');
+    stage.appendChild(stageContent);
+    box.appendChild(stage);
+    app.appendChild(box);
+  }
+
+  function nextCard(){ session.pos++; renderSession(); }
+
+  function flashcardStage(card){
+    var wrap = el(
+      '<div class="flash">' +
+        '<div class="flash-inner">' +
+          '<div class="flash-face front"><span class="tag">Question</span>' + esc(card.q) + "</div>" +
+          '<div class="flash-face back"><span class="tag">Réponse</span>' + esc(card.a) + "</div>" +
+        "</div>" +
+      "</div>"
+    );
+    var outer = el('<div style="display:flex;flex-direction:column;align-items:center;gap:18px;width:100%"></div>');
+    outer.appendChild(wrap);
+    var actions = el(
+      '<div class="flash-actions" hidden>' +
+        '<button data-know="0">À revoir</button>' +
+        '<button class="primary" data-know="1">Je savais</button>' +
+      "</div>"
+    );
+    wrap.addEventListener("click", function(){
+      wrap.classList.toggle("flipped");
+      if (wrap.classList.contains("flipped")) actions.hidden = false;
+    });
+    actions.querySelectorAll("[data-know]").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        markCard(card.id, btn.getAttribute("data-know") === "1");
+        nextCard();
+      });
+    });
+    outer.appendChild(actions);
+    return outer;
+  }
+
+  function qcmStage(card){
+    var options = shuffle([card.a].concat(card.d));
+    var wrap = el(
+      '<div class="qcm">' +
+        '<div class="q">' + esc(card.q) + "</div>" +
+        '<div class="opts"></div>' +
+      "</div>"
+    );
+    var opts = wrap.querySelector(".opts");
+    var answered = false;
+    options.forEach(function(opt){
+      var b = el('<button class="opt">' + esc(opt) + "</button>");
+      b.addEventListener("click", function(){
+        if (answered) return;
+        answered = true;
+        var isCorrect = opt === card.a;
+        b.classList.add(isCorrect ? "correct" : "wrong");
+        if (!isCorrect){
+          opts.querySelectorAll(".opt").forEach(function(o){
+            if (o.textContent === card.a) o.classList.add("correct");
+          });
+        }
+        opts.querySelectorAll(".opt").forEach(function(o){ o.disabled = true; });
+        markCard(card.id, isCorrect);
+        if (session.isExam) session.results[card.id] = isCorrect;
+        var nextBtn = el('<div class="session-nav" style="margin-top:14px"><button class="primary">Suivant</button></div>');
+        nextBtn.querySelector("button").addEventListener("click", nextCard);
+        wrap.appendChild(nextBtn);
+      });
+      opts.appendChild(b);
+    });
+    return wrap;
+  }
+
+  function writtenStage(card){
+    var wrap = el(
+      '<div class="written">' +
+        '<div class="q">' + esc(card.q) + "</div>" +
+        '<textarea placeholder="Écris ta réponse ici…" autofocus></textarea>' +
+        '<div class="session-nav"><button class="primary" data-check>Vérifier</button></div>' +
+      "</div>"
+    );
+    wrap.querySelector("[data-check]").addEventListener("click", function(){
+      var answer = wrap.querySelector("textarea").value.trim();
+      var compare = el(
+        '<div class="compare">' +
+          '<div class="block you"><div class="label">Ta réponse</div>' + (answer ? esc(answer) : "<em>(vide)</em>") + "</div>" +
+          '<div class="block ref"><div class="label">Réponse attendue</div>' + esc(card.a) + "</div>" +
+          '<div class="grade-row">' +
+            "<span style=\"align-self:center;color:var(--fg-muted);font-size:13px\">C'était juste ?</span>" +
+            '<button data-grade="0">Non</button>' +
+            '<button class="primary" data-grade="1">Oui</button>' +
+          "</div>" +
+        "</div>"
+      );
+      compare.querySelectorAll("[data-grade]").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          markCard(card.id, btn.getAttribute("data-grade") === "1");
+          nextCard();
+        });
+      });
+      wrap.querySelector("textarea").setAttribute("disabled","");
+      wrap.querySelector("[data-check]").closest(".session-nav").remove();
+      wrap.appendChild(compare);
+    });
+    return wrap;
+  }
+
+  function recapView(){
+    if (session.isExam) return examRecapView();
+    var p = loadProgress();
+    var scored = session.chapter.cards.filter(function(c){ return session.order.map(function(i){return session.chapter.cards[i].id;}).indexOf(c.id) !== -1; });
+    var known = scored.filter(function(c){ return p[c.id]; }).length;
+    var wrap = el(
+      '<div class="recap">' +
+        '<h3>Session terminée</h3>' +
+        '<div class="score mono">' + known + " / " + scored.length + "</div>" +
+        '<div style="color:var(--fg-muted)">' + esc(session.chapter.title) + "</div>" +
+        '<div class="session-nav" style="margin-top:8px">' +
+          '<button data-again>Refaire</button>' +
+          '<button class="primary" data-back>Retour à la matière</button>' +
+        "</div>" +
+      "</div>"
+    );
+    wrap.querySelector("[data-again]").addEventListener("click", function(){
+      startSession(session.subject, session.chapter, session.mode);
+    });
+    wrap.querySelector("[data-back]").addEventListener("click", quitSession);
+    return wrap;
+  }
+
+  function examRecapView(){
+    var results = session.results;
+    var total = session.order.length;
+    var correctCount = 0;
+    var byChapter = {};
+    session.order.forEach(function(c){
+      if (!byChapter[c.chapterTitle]) byChapter[c.chapterTitle] = {correct:0, total:0};
+      byChapter[c.chapterTitle].total++;
+      if (results[c.id]){ byChapter[c.chapterTitle].correct++; correctCount++; }
+    });
+    var pct = total ? Math.round(correctCount / total * 100) : 0;
+    var wrap = el(
+      '<div class="recap">' +
+        '<h3>Examen blanc terminé</h3>' +
+        '<div class="score mono">' + correctCount + " / " + total + "</div>" +
+        '<div style="color:var(--fg-muted)">' + pct + "% de bonnes réponses" + (session.timeLeft <= 0 ? " · temps écoulé" : "") + "</div>" +
+      "</div>"
+    );
+    var table = el('<div class="exam-breakdown"></div>');
+    Object.keys(byChapter).forEach(function(title){
+      var r = byChapter[title];
+      table.appendChild(el('<div class="exam-row"><span>' + esc(title) + '</span><span class="mono">' + r.correct + "/" + r.total + "</span></div>"));
+    });
+    wrap.appendChild(table);
+    var nav = el(
+      '<div class="session-nav" style="margin-top:14px">' +
+        '<button data-again>Refaire un examen blanc</button>' +
+        '<button class="primary" data-back>Retour à la matière</button>' +
+      "</div>"
+    );
+    nav.querySelector("[data-again]").addEventListener("click", function(){ startExam(session.subject); });
+    nav.querySelector("[data-back]").addEventListener("click", quitSession);
+    wrap.appendChild(nav);
+    return wrap;
+  }
+
+  render();
+})();
+</script>
